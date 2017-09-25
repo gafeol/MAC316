@@ -13,7 +13,7 @@
   [lamC  (arg  symbol?) (body  ExprC?)] ; nomes não são mais necessários
   [appC  (fun  ExprC?) (arg  ExprC?)]
   [ifC   (condição  ExprC?) (sim  ExprC?) (não  ExprC?)]
-  [quoteC (s symbol?)]
+  [quoteC(s ExprC?)]
   )
 
 
@@ -28,7 +28,7 @@
   [uminusS (e  ExprS?)]
   [multS   (l  ExprS?) (r  ExprS?)]
   [ifS     (c  ExprS?) (s  ExprS?) (n  ExprS?)]
-  [quoteS  (s symbol?)]
+  [quoteS  (s ExprS?)]
   )
 
 
@@ -63,7 +63,7 @@
 (define-type Value
   [numV  (n  number?)]
   [closV (arg  symbol?) (body  ExprC?) (env  list?)]
-  [symbolV (s symbol?)]) ;BOTEI SYMBOLV
+  [simbolV (s ExprC?)]) ;BOTEI SIMBOLOV
 
 ; Novos operadores
 (define (num+ l r); Value x Value => Value
@@ -97,7 +97,7 @@
     [plusC (l r) (num+ (interp l env) (interp r env))]
     [multC (l r) (num* (interp l env) (interp r env))]
     [ifC (c s n) (if (zero? (numV-n (interp c env))) (interp n env) (interp s env))]
-    [quoteC (s) (symbolV s)]
+    [quoteC (s) (simbolV s)]
     ))
 
 ; Lookup para procurar símbolos no Environment
@@ -126,15 +126,7 @@
          [(lambda) (lamS (second sl) (parse (third sl)))]
          [(call) (appS (parse (second sl)) (parse (third sl)))]
          [(if) (ifS (parse (second sl)) (parse (third sl)) (parse (fourth sl)))]
-         [(quote) (quoteS (second sl))]
-         [(let) (appS (lamS (first (first (second sl))) (parse (third sl))) (parse (second (first (second sl)))))]
-         [(load) (parse (first (let ((file (open-input-file (symbol->string (symbolV-s (interpS (second sl)))))))
-                   (let f ((x (read file)))
-                     (if (eof-object? x)
-                         (begin
-                           (close-input-port file)
-                           '())
-                         (cons x (f (read file))))))))]
+         [(quote) (quoteS (parse (second sl)))]
          [else (error 'parse "invalid list input")]))]
     [else (error 'parse "invalid input")]))
 
