@@ -126,6 +126,10 @@
                                  (bind-val (first env))]
                   [else (lookup for (rest env))])]))        ; vê no resto
 
+(define (readFile s)
+  (when (not (empty? s))
+    (begin (println (interpS (first s)))
+           (readFile (rest s)))))
 
 ; Parser
 (define (parse s); [s : s-expression] => ExprS
@@ -152,13 +156,13 @@
          ;[(let*) (letS (list (first (first (second sl))) (parse (second (first (second sl)))))
           ;             (letS (list (first (second (second sl))) (parse (second (second (second sl))))) (parse (third sl))))]
          ;[(let) (appS (lamS (first (first (second sl))) (parse (third sl))) (parse (second (first (second sl)))))]
-         [(load) (parse (first (let ((file (open-input-file (symbol->string (symbolV-s (interpS (second sl)))))))
+         [(load) (readFile (let ((file (open-input-file (symbol->string (symbolV-s (interpS (second sl)))))))
                    (let f ((x (read file)))
                      (if (eof-object? x)
                          (begin
                            (close-input-port file)
                            '())
-                         (cons x (f (read file))))))))]
+                         (cons x (f (read file)))))))]
          [else (error 'parse "invalid list input")]))]
     [else (error 'parse "invalid input")]))
 
