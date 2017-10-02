@@ -153,9 +153,6 @@
                               (list (first (second (second sl))) (parse (second (second (second sl))))))
                         (parse (third sl)))]
          [(letrec) (letrecS (list (first (first (second sl))) (parse (second (first (second sl))))) (parse (third sl)))]
-         ;[(let*) (letS (list (first (first (second sl))) (parse (second (first (second sl)))))
-          ;             (letS (list (first (second (second sl))) (parse (second (second (second sl))))) (parse (third sl))))]
-         ;[(let) (appS (lamS (first (first (second sl))) (parse (third sl))) (parse (second (first (second sl)))))]
          [(load) (readFile (let ((file (open-input-file (symbol->string (symbolV-s (interpS (second sl)))))))
                    (let f ((x (read file)))
                      (if (eof-object? x)
