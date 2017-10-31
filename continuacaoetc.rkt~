@@ -1,0 +1,7 @@
+#lang scheme
+
+(define f (lambda (x) (x 5) (x 8)))
+
+(f (lambda (k)(* k k)))
+
+(+ (call/cc f) 3)

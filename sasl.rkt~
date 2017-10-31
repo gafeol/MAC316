@@ -1,0 +1,4 @@
+#lang lazy
+
+(set fun-srch-for (lambda (n)
+                    (find-val pred (interval 1 n) (+ 1 n))))
