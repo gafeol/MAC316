@@ -21,7 +21,8 @@
   [cdrC    (pair : ExprC)]; Gets 2nd element of a pair
   [equalC  (a : ExprC) (b : ExprC)]
   [setC    (var : symbol) (arg : ExprC)]; Attribution of variable
-  )
+ ; [letrecC (s : symbol) (arg : ExprC) (body : ExprC)]
+   )
 
 
 (define-type ExprS
@@ -43,6 +44,9 @@
   [cdrS    (pair : ExprS)]
   [equalS  (a : ExprS) (b : ExprS)]
   [setS    (var : symbol) (arg : ExprS)]
+  [letS    (s : symbol) (arg : ExprS) (body : ExprS)]
+  [let*S   (s1 : symbol) (arg1 : ExprS) (s2 : symbol) (arg2 : ExprS) (body : ExprS)]
+  ;[letrecS (s : symbol) (arg : ExprS) (body : ExprS)]
   )
 
 
@@ -66,6 +70,9 @@
     [cdrS    (c)        (cdrC (desugar c))]
     [equalS  (a b)     (equalC (desugar a) (desugar b))]
     [setS    (var expr) (setC  var (desugar expr))]
+    [letS    (s a b) (appC (lamC s (desugar b)) (desugar a))]
+    [let*S   (s1 a1 s2 a2 b) (appC (lamC s1 (appC (lamC s2 (desugar b)) (desugar a2))) (desugar a1))]
+   ; [letrecS (s a b) (letrecC s (desugar a) (desugar b))]
     ))
 
 
@@ -96,7 +103,7 @@
 ;   mt-env <-> mt-store
 ;   extend-env <-> override-store
 (define-type Storage
-      [cell (location : Location) (val : Value)])
+      [cell (location : Location) (val : (boxof Value))])
 (define-type-alias Store (listof Storage))
 
 (define mt-store empty)
@@ -113,7 +120,7 @@
                   [else (lookup for (rest env))])]))        ; vê no resto
 
 ; fetch is equivalent to a lookup for the store
-(define (fetch [l : Location] [sto : Store]) : Value
+(define (fetch [l : Location] [sto : Store]) : (boxof Value)
        (cond
             [(empty? sto) (error 'fetch "posição não encontrada")]
             [else (cond
@@ -247,22 +254,31 @@
                           
     [cdrC (c) (type-case Result (interp c env sto)
                 [v*s (v-c s-c)
-                     (v*s (fetch (consV-cdr v-c) s-c)ndo a igualdade
-(fetch (consV-car v-1) s-1))
+                     (v*s (fetch (consV-cdr v-c) s-c)
                           s-c)])]
 
     [equalC (c d)
-            (begin
-              (let (a (interp c env sto))
-                (let (b (interp d env sto))
-                  (type-case Value (v*s-v a)
-                    [
-                  ; (fetch (consV-car v-1) s-1))
-                      (if (equal? (v*s-v (interp a env sto)) (v*s-v (interp b env sto)))
-                          (v*s (numV 1) sto)
-                          (v*s (numV 0) sto))]
-))
+            (let* ((a (interp c env sto)) (b (interp d env sto)))
+              (myEqual a b sto)
+              )]
+   ; [letrecC (sym fun body)
+    ;         (let* ([dummy-clos
+     ;                  (closV sym (idC sym) mt-env)]
+      ;              [where (new-loc)]
+       ;              [tmp-env
+        ;               (extend-env (bind sym where) env)])
+         ;      (begin
+          ;       (override-store (cell where dummy-clos))
+           ;      [define fun-clos (interp fun tmp-env sto)]
+            ;     [define fixed-env (extend-env (bind sym fun-clos) env)])
+             ;    (set-closV-env! fun-clos fixed-env)
+              ;   (interp body fixed-env sto))]
+    ))
 
+(define (myEqual a b sto) 
+  (if (equal? a b)
+      (v*s (numV 1) sto)
+      (v*s (numV 0) sto)))
 
 ; Parser with funny instructions for boxes
 (define (parse [s : s-expression]) : ExprS
@@ -288,6 +304,13 @@
          [(car) (carS (parse (second sl)))]
          [(cdr) (cdrS (parse (second sl)))]
          [(equal?) (equalS (parse (second sl)) (parse (third sl)))]
+         [(let) (letS (s-exp->symbol (first (s-exp->list (first (s-exp->list (second sl)))))) (parse (second (s-exp->list (first (s-exp->list (second sl))))))
+                      (parse (third sl)))]
+         [(let*) (let*S (s-exp->symbol (first (s-exp->list (first (s-exp->list (second sl)))))) (parse (second (s-exp->list (first (s-exp->list (second sl))))))
+                        (s-exp->symbol (first (s-exp->list (second (s-exp->list (second sl)))))) (parse (second (s-exp->list (second (s-exp->list (second sl))))))
+                        (parse (third sl)))]
+     ;    [(letrec) (letrecS (first (first (second sl))) (parse (second (first (second sl))))
+      ;                      (parse (third sl)))]
          [else (error 'parse "invalid list input")]))]
     [else (error 'parse "invalid input")]))
 
@@ -311,3 +334,17 @@
               mt-env mt-store))
       (numV 10))
 
+
+
+; let  
+(test (v*s-v (interpS '(let ([x 3]) (+ 2 x)))) (numV 5))
+
+
+
+; nested let 
+(test (v*s-v (interpS '(let ([x 3]) (let ([y 4]) (+ x y))))) (numV 7))
+
+
+
+; let*
+(test (v*s-v (interpS '(let* ([x 3] [y (+ 3 x)]) (+ y x)))) (numV 9))
